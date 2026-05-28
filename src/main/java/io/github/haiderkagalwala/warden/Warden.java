@@ -1,8 +1,18 @@
 package io.github.haiderkagalwala.warden;
 
+import io.github.haiderkagalwala.warden.stream.StreamConsumer;
+import io.github.haiderkagalwala.warden.outcome.ProcessOutcome;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 public final class Warden {
@@ -26,8 +36,10 @@ public final class Warden {
         private boolean timeoutEnabled  = true;
         private boolean captureStdout   = false;
         private boolean captureStderr   = false;
-        private Consumer<byte[]> stdoutConsumer;
-        private Consumer<byte[]> stderrConsumer;
+        private boolean mergeOutputAndError = false;
+        private StreamConsumer stdoutConsumer;
+        private StreamConsumer stderrConsumer;
+
 
         private CommandBuilder(List<String> command) {
             this.command = command;
@@ -49,7 +61,6 @@ public final class Warden {
             return this;
         }
 
-        // User wants bytes back in ProcessOutcome
         public CommandBuilder captureStdout() {
             this.captureStdout = true;
             return this;
@@ -60,19 +71,106 @@ public final class Warden {
             return this;
         }
 
-        // User wants to consume output in real-time
-        public CommandBuilder onStdout(Consumer<byte[]> consumer) {
+        public CommandBuilder onStdout(StreamConsumer consumer) {
             this.stdoutConsumer = consumer;
             return this;
         }
 
-        public CommandBuilder onStderr(Consumer<byte[]> consumer) {
-            this.stderrConsumer = consumer;
+        public CommandBuilder onStderr(StreamConsumer consumer) {
+            if (!mergeOutputAndError)
+                this.stderrConsumer = consumer;
+            return this;
+        }
+        public CommandBuilder mergeOutputAndError(boolean mergeOutputAndError) {
+            this.mergeOutputAndError = mergeOutputAndError;
+            this.stderrConsumer = null;
             return this;
         }
 
-        public ProcessOutcome execute() {
-            throw new UnsupportedOperationException("Not implemented yet");
+        public ProcessOutcome execute() throws Exception {
+            // 1. Configure ProcessBuilder
+            var pb = new ProcessBuilder(this.command);
+            if (workingDir != null) pb.directory(workingDir.toFile());
+            if (mergeOutputAndError) pb.redirectErrorStream(true);
+            if (stdoutConsumer == null && !captureStdout)
+                pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+            if (stderrConsumer == null && !captureStderr && !mergeOutputAndError)
+                pb.redirectError(ProcessBuilder.Redirect.DISCARD);
+
+            // 2. Start process
+            Process process;
+            try {
+                process = pb.start();
+            } catch (IOException e) {
+                return new ProcessOutcome.Failed(e); // ← never started
+            }
+
+            var startTime = Instant.now();
+            var capturedStdout = new ByteArrayOutputStream();
+            var capturedStderr = new ByteArrayOutputStream();
+
+            // 3. Drain concurrently using virtual threads
+            try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+
+                var stdoutFuture = executor.submit(() -> {
+                    drain(process.getInputStream(), capturedStdout, stdoutConsumer, captureStdout);
+                    return null;
+                });
+
+                var stderrFuture = mergeOutputAndError ? null :
+                        executor.submit(() -> {
+                            drain(process.getErrorStream(), capturedStderr, stderrConsumer, captureStderr);
+                            return null;
+                        });
+
+                // 4. Wait — concurrently with draining
+                boolean finished;
+                if (timeoutEnabled) {
+                    finished = process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS);
+                } else {
+                    process.waitFor();
+                    finished = true;
+                }
+
+                // 5. Wait for drainers to finish
+                stdoutFuture.get();
+                if (stderrFuture != null) stderrFuture.get();
+
+                var duration = Duration.between(startTime, Instant.now());
+                var stdout = capturedStdout.toByteArray();
+                var stderr = capturedStderr.toByteArray();
+
+                // 6. Return correct outcome type
+                if (!finished) {
+                    process.destroyForcibly(); // ← kill before returning
+                    return new ProcessOutcome.TimedOut(duration, stdout, stderr);
+                }
+
+                return new ProcessOutcome.Completed(
+                        process.exitValue(),
+                        stdout,
+                        stderr,
+                        duration
+                );
+
+            } catch (Exception e) {
+                return new ProcessOutcome.Failed(e);
+            }
+        }
+
+        // Private helper — drains one stream
+        private void drain(InputStream stream,
+                           ByteArrayOutputStream capture,
+                           StreamConsumer consumer,
+                           boolean shouldCapture) throws Exception {
+            var buffer = new byte[4096];
+            int n;
+            while ((n = stream.read(buffer)) != -1) {
+                if (shouldCapture)
+                    capture.write(buffer, 0, n);
+                if (consumer != null)
+                    consumer.consume(Arrays.copyOf(buffer, n));
+            }
         }
     }
 
@@ -113,8 +211,8 @@ public final class Warden {
             return this;
         }
 
-        public InteractiveProcess start() {
-            throw new UnsupportedOperationException("Not implemented yet");
-        }
+//        public InteractiveProcess start() {
+////            throw new UnsupportedOperationException("Not implemented yet");
+//        }
     }
 }
