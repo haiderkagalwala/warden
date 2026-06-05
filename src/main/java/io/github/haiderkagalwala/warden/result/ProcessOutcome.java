@@ -30,8 +30,6 @@ public sealed interface ProcessOutcome permits
     record Completed(
             int exitCode,
             boolean success,
-            byte[] stdout,
-            byte[] stderr,
             Duration duration
     ) implements ProcessOutcome {
 
@@ -42,8 +40,6 @@ public sealed interface ProcessOutcome permits
          */
         public boolean succeeded() { return success; }
 
-        public String stdoutAsString() { return new String(stdout, StandardCharsets.UTF_8); }
-        public String stderrAsString() { return new String(stderr, StandardCharsets.UTF_8); }
     }
 
     /**
@@ -51,12 +47,8 @@ public sealed interface ProcessOutcome permits
      * Carries any output collected before the kill.
      */
     record TimedOut(
-            Duration elapsed,
-            byte[] stdout,
-            byte[] stderr
+            Duration elapsed
     ) implements ProcessOutcome {
-        public String stdoutAsString() { return new String(stdout, StandardCharsets.UTF_8); }
-        public String stderrAsString() { return new String(stderr, StandardCharsets.UTF_8); }
     }
 
     /**
@@ -65,12 +57,8 @@ public sealed interface ProcessOutcome permits
      * Carries any output collected before the kill.
      */
     record Killed(
-            byte[] stdout,
-            byte[] stderr,
             Duration elapsed
     ) implements ProcessOutcome {
-        public String stdoutAsString() { return new String(stdout, StandardCharsets.UTF_8); }
-        public String stderrAsString() { return new String(stderr, StandardCharsets.UTF_8); }
     }
 
     /** An exception occurred — process never started, or an I/O failure happened mid-execution. */

@@ -1,26 +1,27 @@
 package io.github.haiderkagalwala;
 
-import io.github.haiderkagalwala.warden.engine.Warden;
-import io.github.haiderkagalwala.warden.result.ProcessOutcome;
+import io.github.haiderkagalwala.warden.Warden;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
+import java.io.File;
 
 public class Main {
 
     public static void main(String[] args) throws Exception {
 
+//        new ProcessBuilder()
+//                .redirectInput(new File(""))
+//                .start();
 
         var processOutcome = Warden.run("git", "status")
-                .onStdout((buf) -> {
+                .redirectStderr(new File("wdswdw"))
+                .executeAsync();
 
-                            System.out.print(new String(buf, UTF_8));
-
-                })
-                .execute();
-        switch (processOutcome) {
-            case ProcessOutcome.Completed c-> System.out.println(c.exitCode());
-            default -> System.out.println("");
-        }
+        processOutcome.await();
+//        switch (processOutcome) {
+//            case ProcessOutcome.Completed c-> System.out.println(c.exitCode());
+//            case ProcessOutcome.Failed f -> System.out.println(f);
+//            default -> System.out.println("");
+//        }
 
     }
 }

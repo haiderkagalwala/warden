@@ -27,18 +27,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *      .writeLine("exit");
  * }</pre>
  */
-public final class InteractiveProcess {
+public final class WardenPtyHandle {
 
     private final Process process; // PtyProcess at runtime
     private final CompletableFuture<ProcessOutcome> outcomeFuture;
     private final Runnable cancelAction;
     private final AtomicBoolean cancelled;
 
-    public InteractiveProcess(Process process,
-                               CompletableFuture<ProcessOutcome> outcomeFuture,
-                               AtomicBoolean cancelled,
-                               Runnable cancelAction) {
-        this.process       = process;
+    public WardenPtyHandle(Process process,
+                           CompletableFuture<ProcessOutcome> outcomeFuture,
+                           AtomicBoolean cancelled,
+                           Runnable cancelAction) {
+            this.process       = process;
         this.outcomeFuture = outcomeFuture;
         this.cancelled     = cancelled;
         this.cancelAction  = cancelAction;
@@ -47,7 +47,7 @@ public final class InteractiveProcess {
     // ── Stdin writes ──────────────────────────────────────────────────────
 
     /** Writes {@code line + "\n"} to stdin and flushes immediately. Chainable. */
-    public InteractiveProcess writeLine(String line) throws IOException {
+    public WardenPtyHandle writeLine(String line) throws IOException {
         return write((line + "\n").getBytes(StandardCharsets.UTF_8));
     }
 
@@ -55,12 +55,12 @@ public final class InteractiveProcess {
      * Writes {@code text} without appending a newline — useful for raw control
      * sequences (e.g. TAB completion, arrow keys). Chainable.
      */
-    public InteractiveProcess write(String text) throws IOException {
+    public WardenPtyHandle write(String text) throws IOException {
         return write(text.getBytes(StandardCharsets.UTF_8));
     }
 
     /** Writes raw bytes to stdin and flushes immediately. Chainable. */
-    public InteractiveProcess write(byte[] bytes) throws IOException {
+    public WardenPtyHandle write(byte[] bytes) throws IOException {
         var stdin = process.getOutputStream();
         stdin.write(bytes);
         stdin.flush();
@@ -101,8 +101,9 @@ public final class InteractiveProcess {
      * The outcome future resolves as {@link ProcessOutcome.Killed}.
      */
     public void cancel() {
-        cancelled.set(true);
-        cancelAction.run();
+        if (cancelled.compareAndSet(false, true)) {
+            cancelAction.run();
+        }
     }
 
     // ── Outcome ───────────────────────────────────────────────────────────

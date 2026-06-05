@@ -1,6 +1,7 @@
-package io.github.haiderkagalwala.warden.engine;
+package io.github.haiderkagalwala.warden.internal;
 
-import io.github.haiderkagalwala.warden.handle.InteractiveProcess;
+import io.github.haiderkagalwala.warden.Warden;
+import io.github.haiderkagalwala.warden.handle.WardenPtyHandle;
 import io.github.haiderkagalwala.warden.streams.StreamConsumer;
 
 import java.io.IOException;
@@ -14,7 +15,7 @@ import java.util.Map;
  * Fluent builder for PTY (pseudo-terminal) process execution.
  *
  * <p>Obtain an instance via {@link Warden#interactive(String...)}. Call {@link #start()}
- * to launch the process and receive an {@link InteractiveProcess} handle immediately.
+ * to launch the process and receive an {@link WardenPtyHandle} handle immediately.
  *
  * <pre>{@code
  * InteractiveProcess shell = Warden.interactive("bash")
@@ -36,11 +37,9 @@ public final class InteractiveBuilder {
     int ptyCols                 = 80;
     int ptyRows                 = 24;
     StreamConsumer outputConsumer;      // called per chunk on the combined PTY stream
-    boolean captureOutput       = false;
     Map<String, String> extraEnv = new HashMap<>();
 
-    /** Package-private — obtain via {@link Warden#interactive(String...)}. */
-    InteractiveBuilder(List<String> command) {
+    public InteractiveBuilder(List<String> command) {
         this.command = command;
     }
 
@@ -64,7 +63,6 @@ public final class InteractiveBuilder {
      * {@link io.github.haiderkagalwala.warden.result.ProcessOutcome.Completed}.
      * Bytes are available once the outcome future resolves.
      */
-    public InteractiveBuilder captureOutput()              { this.captureOutput = true; return this; }
 
     public InteractiveBuilder env(String key, String value){ this.extraEnv.put(key, value); return this; }
     public InteractiveBuilder envMap(Map<String, String> e){ this.extraEnv.putAll(e); return this; }
@@ -72,10 +70,10 @@ public final class InteractiveBuilder {
     // ── Execution ─────────────────────────────────────────────────────────
 
     /**
-     * Launches the PTY process and returns an {@link InteractiveProcess} handle immediately.
+     * Launches the PTY process and returns an {@link WardenPtyHandle} handle immediately.
      * Use the handle to write to stdin, resize the terminal, or cancel.
      */
-    public InteractiveProcess start() throws IOException {
+    public WardenPtyHandle start() throws IOException {
         return new PtyExecutionEngine(snapshot()).start();
     }
 
@@ -89,7 +87,6 @@ public final class InteractiveBuilder {
                 ptyCols,
                 ptyRows,
                 outputConsumer,
-                captureOutput,
                 Map.copyOf(extraEnv)
         );
     }

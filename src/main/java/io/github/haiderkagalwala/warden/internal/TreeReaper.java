@@ -1,4 +1,4 @@
-package io.github.haiderkagalwala.warden.engine;
+package io.github.haiderkagalwala.warden.internal;
 
 import java.util.concurrent.TimeUnit;
 
@@ -13,23 +13,25 @@ final class TreeReaper {
     private TreeReaper() {}
 
     static void destroy(Process p) {
-        try {
-            p.descendants().forEach(ProcessHandle::destroy);
-            p.destroy();
+        var descendants = p.descendants().toList();
 
+        descendants.forEach(ProcessHandle::destroy);
+        p.destroy();
+
+        try {
             if (!p.waitFor(3, TimeUnit.SECONDS)) {
-                // Root survived the grace period — escalate everything
-                p.descendants().forEach(ProcessHandle::destroyForcibly);
+                descendants.stream()
+                        .filter(ProcessHandle::isAlive)
+                        .forEach(ProcessHandle::destroyForcibly);
                 p.destroyForcibly();
             } else {
-                // Root exited cleanly — mop up descendants that ignored SIGTERM
-                p.descendants()
-                 .filter(ProcessHandle::isAlive)
-                 .forEach(ProcessHandle::destroyForcibly);
+                descendants.stream()
+                        .filter(ProcessHandle::isAlive)
+                        .forEach(ProcessHandle::destroyForcibly);
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            p.descendants().forEach(ProcessHandle::destroyForcibly);
+            descendants.forEach(ProcessHandle::destroyForcibly);
             p.destroyForcibly();
         }
     }

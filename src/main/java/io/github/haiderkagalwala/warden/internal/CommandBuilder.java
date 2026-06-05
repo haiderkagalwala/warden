@@ -1,6 +1,7 @@
-package io.github.haiderkagalwala.warden.engine;
+package io.github.haiderkagalwala.warden.internal;
 
-import io.github.haiderkagalwala.warden.handle.RunningProcess;
+import io.github.haiderkagalwala.warden.Warden;
+import io.github.haiderkagalwala.warden.handle.WardenHandle;
 import io.github.haiderkagalwala.warden.streams.StreamConsumer;
 import io.github.haiderkagalwala.warden.result.ProcessOutcome;
 
@@ -38,8 +39,6 @@ public final class CommandBuilder {
     Path workingDir;
     Duration timeout            = Duration.ofSeconds(30);
     boolean timeoutEnabled      = true;
-    boolean captureStdout       = false;
-    boolean captureStderr       = false;
     boolean mergeOutputAndError = false;
     StreamConsumer stdoutConsumer;
     StreamConsumer stderrConsumer;
@@ -51,8 +50,7 @@ public final class CommandBuilder {
     boolean clearEnv            = false;
     int[] successExitCodes      = {0};
 
-    /** Package-private — obtain via {@link Warden#run(String...)}. */
-    CommandBuilder(List<String> command) {
+     public CommandBuilder(List<String> command) {
         this.command = command;
     }
 
@@ -61,11 +59,9 @@ public final class CommandBuilder {
     public CommandBuilder workingDir(Path dir)           { this.workingDir = dir; return this; }
     public CommandBuilder timeout(Duration t)            { this.timeout = t; this.timeoutEnabled = true; return this; }
     public CommandBuilder noTimeout()                    { this.timeoutEnabled = false; return this; }
-    public CommandBuilder captureStdout()                { this.captureStdout = true; return this; }
-    public CommandBuilder captureStderr()                { this.captureStderr = true; return this; }
     public CommandBuilder inheritIO()                    { this.inheritIO = true; return this; }
     public CommandBuilder clearEnv()                     { this.clearEnv = true; return this; }
-    public CommandBuilder successExitCodes(int... codes) { this.successExitCodes = codes; return this; }
+//    public CommandBuilder successExitCodes(int... codes) { this.successExitCodes = codes; return this; }
 
     public CommandBuilder onStdout(StreamConsumer consumer) {
         this.stdoutConsumer = consumer;
@@ -104,11 +100,11 @@ public final class CommandBuilder {
     }
 
     /**
-     * Launches the process and returns immediately with a {@link RunningProcess} handle.
-     * The handle's {@link RunningProcess#outcome()} future completes once the process exits
+     * Launches the process and returns immediately with a {@link WardenHandle} handle.
+     * The handle's {@link WardenHandle#outcome()} future completes once the process exits
      * <em>and</em> all background drainers have finished flushing captured bytes.
      */
-    public RunningProcess executeAsync() throws IOException {
+    public WardenHandle executeAsync() throws IOException {
         return new AsyncExecutionEngine(snapshot()).executeAsync();
     }
 
@@ -120,8 +116,6 @@ public final class CommandBuilder {
                 workingDir,
                 timeout,
                 timeoutEnabled,
-                captureStdout,
-                captureStderr,
                 mergeOutputAndError,
                 stdoutConsumer,
                 stderrConsumer,
@@ -130,8 +124,7 @@ public final class CommandBuilder {
                 redirectStderr,
                 redirectStdin,
                 Map.copyOf(extraEnv),
-                clearEnv,
-                successExitCodes.clone()
+                clearEnv
         );
     }
 }

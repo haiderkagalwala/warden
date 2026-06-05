@@ -2,8 +2,10 @@ package io.github.haiderkagalwala.warden.handle;
 
 import io.github.haiderkagalwala.warden.result.ProcessOutcome;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -24,23 +26,41 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * The future from {@link #outcome()} completes <em>after</em> the process exits
  * <em>and</em> all background drainers have finished flushing captured bytes.
  */
-public final class RunningProcess {
+public final class WardenHandle {
 
     private final Process process;
     private final CompletableFuture<ProcessOutcome> outcomeFuture;
     private final Runnable cancelAction;
     private final AtomicBoolean cancelled;
 
-    public RunningProcess(Process process,
-                          CompletableFuture<ProcessOutcome> outcomeFuture,
-                          AtomicBoolean cancelled,
-                          Runnable cancelAction) {
+    public WardenHandle(Process process,
+                        CompletableFuture<ProcessOutcome> outcomeFuture,
+                        AtomicBoolean cancelled,
+                        Runnable cancelAction) {
         this.process       = process;
         this.outcomeFuture = outcomeFuture;
         this.cancelled     = cancelled;
         this.cancelAction  = cancelAction;
     }
+    public WardenHandle writeLine(String line) throws IOException {
+        return write((line + "\n").getBytes(StandardCharsets.UTF_8));
+    }
 
+    /**
+     * Writes {@code text} without appending a newline — useful for raw control
+     * sequences (e.g. TAB completion, arrow keys). Chainable.
+     */
+    public WardenHandle write(String text) throws IOException {
+        return write(text.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /** Writes raw bytes to stdin and flushes immediately. Chainable. */
+    public WardenHandle write(byte[] bytes) throws IOException {
+        var stdin = process.getOutputStream();
+        stdin.write(bytes);
+        stdin.flush();
+        return this;
+    }
     // ── Stream access ─────────────────────────────────────────────────────
 
     /** Write to the process stdin. Flush after writes; close to signal EOF. */
@@ -61,8 +81,9 @@ public final class RunningProcess {
      * The outcome future resolves as {@link ProcessOutcome.Killed}.
      */
     public void cancel() {
-        cancelled.set(true);
-        cancelAction.run();
+        if (cancelled.compareAndSet(false, true)) {
+            cancelAction.run();
+        }
     }
 
     // ── Outcome ───────────────────────────────────────────────────────────
