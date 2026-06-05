@@ -22,11 +22,11 @@ import java.util.concurrent.TimeUnit;
  *   <li>Join drain futures before reading captured bytes.</li>
  * </ol>
  */
-final class ExecutionEngine {
+final class SyncExecutionEngine {
 
     private final ProcessConfig config;
 
-    ExecutionEngine(ProcessConfig config) {
+    SyncExecutionEngine(ProcessConfig config) {
         this.config = config;
     }
 

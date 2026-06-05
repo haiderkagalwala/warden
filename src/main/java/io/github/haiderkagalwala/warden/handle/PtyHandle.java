@@ -27,17 +27,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *      .writeLine("exit");
  * }</pre>
  */
-public final class WardenPtyHandle {
+public final class PtyHandle {
 
     private final Process process; // PtyProcess at runtime
     private final CompletableFuture<ProcessOutcome> outcomeFuture;
     private final Runnable cancelAction;
     private final AtomicBoolean cancelled;
 
-    public WardenPtyHandle(Process process,
-                           CompletableFuture<ProcessOutcome> outcomeFuture,
-                           AtomicBoolean cancelled,
-                           Runnable cancelAction) {
+    public PtyHandle(Process process,
+                     CompletableFuture<ProcessOutcome> outcomeFuture,
+                     AtomicBoolean cancelled,
+                     Runnable cancelAction) {
             this.process       = process;
         this.outcomeFuture = outcomeFuture;
         this.cancelled     = cancelled;
@@ -47,7 +47,7 @@ public final class WardenPtyHandle {
     // ── Stdin writes ──────────────────────────────────────────────────────
 
     /** Writes {@code line + "\n"} to stdin and flushes immediately. Chainable. */
-    public WardenPtyHandle writeLine(String line) throws IOException {
+    public PtyHandle writeLine(String line) throws IOException {
         return write((line + "\n").getBytes(StandardCharsets.UTF_8));
     }
 
@@ -55,12 +55,12 @@ public final class WardenPtyHandle {
      * Writes {@code text} without appending a newline — useful for raw control
      * sequences (e.g. TAB completion, arrow keys). Chainable.
      */
-    public WardenPtyHandle write(String text) throws IOException {
+    public PtyHandle write(String text) throws IOException {
         return write(text.getBytes(StandardCharsets.UTF_8));
     }
 
     /** Writes raw bytes to stdin and flushes immediately. Chainable. */
-    public WardenPtyHandle write(byte[] bytes) throws IOException {
+    public PtyHandle write(byte[] bytes) throws IOException {
         var stdin = process.getOutputStream();
         stdin.write(bytes);
         stdin.flush();

@@ -1,7 +1,7 @@
 package io.github.haiderkagalwala.warden.internal;
 
 import io.github.haiderkagalwala.warden.Warden;
-import io.github.haiderkagalwala.warden.handle.WardenPtyHandle;
+import io.github.haiderkagalwala.warden.handle.PtyHandle;
 import io.github.haiderkagalwala.warden.streams.StreamConsumer;
 
 import java.io.IOException;
@@ -15,7 +15,7 @@ import java.util.Map;
  * Fluent builder for PTY (pseudo-terminal) process execution.
  *
  * <p>Obtain an instance via {@link Warden#interactive(String...)}. Call {@link #start()}
- * to launch the process and receive an {@link WardenPtyHandle} handle immediately.
+ * to launch the process and receive an {@link PtyHandle} handle immediately.
  *
  * <pre>{@code
  * InteractiveProcess shell = Warden.interactive("bash")
@@ -70,10 +70,10 @@ public final class InteractiveBuilder {
     // ── Execution ─────────────────────────────────────────────────────────
 
     /**
-     * Launches the PTY process and returns an {@link WardenPtyHandle} handle immediately.
+     * Launches the PTY process and returns an {@link PtyHandle} handle immediately.
      * Use the handle to write to stdin, resize the terminal, or cancel.
      */
-    public WardenPtyHandle start() throws IOException {
+    public PtyHandle start() throws IOException {
         return new PtyExecutionEngine(snapshot()).start();
     }
 

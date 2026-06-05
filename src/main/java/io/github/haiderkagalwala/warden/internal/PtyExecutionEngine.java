@@ -1,7 +1,7 @@
 package io.github.haiderkagalwala.warden.internal;
 
 import com.pty4j.PtyProcessBuilder;
-import io.github.haiderkagalwala.warden.handle.WardenPtyHandle;
+import io.github.haiderkagalwala.warden.handle.PtyHandle;
 import io.github.haiderkagalwala.warden.result.ProcessOutcome;
 import io.github.haiderkagalwala.warden.streams.StreamConsumer;
 
@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Launches a PTY (pseudo-terminal) process via pty4j and returns an
- * {@link WardenPtyHandle} handle immediately — never blocks the calling thread.
+ * {@link PtyHandle} handle immediately — never blocks the calling thread.
  *
  * <h3>PTY characteristics</h3>
  * <ul>
@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *   <li>The child process sees {@code isatty()} = true, so line-buffering and
  *       prompts work as expected.</li>
  *   <li>Terminal dimensions can be changed at runtime via
- *       {@link WardenPtyHandle#resize(int, int)}.</li>
+ *       {@link PtyHandle#resize(int, int)}.</li>
  * </ul>
  */
 final class PtyExecutionEngine {
@@ -35,7 +35,7 @@ final class PtyExecutionEngine {
         this.config = config;
     }
 
-    WardenPtyHandle start() throws IOException {
+    PtyHandle start() throws IOException {
 
 
         // ── 1. Build PTY environment (inherit current env + overrides) ─────────
@@ -99,6 +99,6 @@ final class PtyExecutionEngine {
             return (ProcessOutcome) new ProcessOutcome.Completed(exitCode, exitCode == 0, duration);
         });
 
-        return new WardenPtyHandle(process, outcomeFuture, cancelled, () -> PtyTreeReaper.destroy(process));
+        return new PtyHandle(process, outcomeFuture, cancelled, () -> PtyTreeReaper.destroy(process));
     }
 }

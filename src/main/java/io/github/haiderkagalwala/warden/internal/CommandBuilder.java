@@ -1,7 +1,7 @@
 package io.github.haiderkagalwala.warden.internal;
 
 import io.github.haiderkagalwala.warden.Warden;
-import io.github.haiderkagalwala.warden.handle.WardenHandle;
+import io.github.haiderkagalwala.warden.handle.PipeHandle;
 import io.github.haiderkagalwala.warden.streams.StreamConsumer;
 import io.github.haiderkagalwala.warden.result.ProcessOutcome;
 
@@ -96,15 +96,15 @@ public final class CommandBuilder {
      * @return the process outcome — never null, never throws for non-zero exit codes
      */
     public ProcessOutcome execute() throws IOException {
-        return new ExecutionEngine(snapshot()).execute();
+        return new SyncExecutionEngine(snapshot()).execute();
     }
 
     /**
-     * Launches the process and returns immediately with a {@link WardenHandle} handle.
-     * The handle's {@link WardenHandle#outcome()} future completes once the process exits
+     * Launches the process and returns immediately with a {@link PipeHandle} handle.
+     * The handle's {@link PipeHandle#outcome()} future completes once the process exits
      * <em>and</em> all background drainers have finished flushing captured bytes.
      */
-    public WardenHandle executeAsync() throws IOException {
+    public PipeHandle executeAsync() throws IOException {
         return new AsyncExecutionEngine(snapshot()).executeAsync();
     }
 

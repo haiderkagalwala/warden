@@ -1,6 +1,6 @@
 package io.github.haiderkagalwala.warden.internal;
 
-import io.github.haiderkagalwala.warden.handle.WardenHandle;
+import io.github.haiderkagalwala.warden.handle.PipeHandle;
 import io.github.haiderkagalwala.warden.result.ProcessOutcome;
 
 import java.io.IOException;
@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Async execution engine. Launches a process and returns immediately with a
- * {@link WardenHandle} handle — never blocks the calling thread.
+ * {@link PipeHandle} handle — never blocks the calling thread.
  *
  * <h3>Design</h3>
  * <ol>
@@ -36,7 +36,7 @@ final class AsyncExecutionEngine {
         this.config = config;
     }
 
-    WardenHandle executeAsync() throws IOException {
+    PipeHandle executeAsync() throws IOException {
 
         // ── 1. Start process (no DISCARD — expose streams via RunningProcess) ──
         var process   = ProcessFactory.forAsync(config).start();
@@ -98,6 +98,6 @@ final class AsyncExecutionEngine {
             return (ProcessOutcome) new ProcessOutcome.Completed(exitCode, exitCode == 0,  duration);
         });
 
-        return new WardenHandle(process, outcomeFuture, cancelled, () -> TreeReaper.destroy(process));
+        return new PipeHandle(process, outcomeFuture, cancelled, () -> TreeReaper.destroy(process));
     }
 }
