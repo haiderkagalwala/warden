@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Immutable snapshot of an {@link InteractiveBuilder}
+ * Immutable snapshot of an {@link PtyBuilder}
  * configuration, passed to the PTY execution engine.
  */
 record PtyConfig(

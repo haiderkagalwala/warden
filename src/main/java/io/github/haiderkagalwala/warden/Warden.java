@@ -1,7 +1,7 @@
 package io.github.haiderkagalwala.warden;
 
 import io.github.haiderkagalwala.warden.internal.CommandBuilder;
-import io.github.haiderkagalwala.warden.internal.InteractiveBuilder;
+import io.github.haiderkagalwala.warden.internal.PtyBuilder;
 
 import java.util.List;
 
@@ -31,7 +31,7 @@ import java.util.List;
  * }</pre>
  *
  * @see CommandBuilder
- * @see InteractiveBuilder
+ * @see PtyBuilder
  */
 public final class Warden {
 
@@ -48,9 +48,9 @@ public final class Warden {
 
     /**
      * Creates a builder for a PTY (pseudo-terminal) command.
-     * Use {@link InteractiveBuilder#start()} to launch.
+     * Use {@link PtyBuilder#start()} to launch.
      */
-    public static InteractiveBuilder interactive(String... command) {
-        return new InteractiveBuilder(List.of(command));
+    public static PtyBuilder interactive(String... command) {
+        return new PtyBuilder(List.of(command));
     }
 }

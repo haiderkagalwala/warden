@@ -29,7 +29,7 @@ import java.util.Map;
  * shell.await();
  * }</pre>
  */
-public final class InteractiveBuilder {
+public final class PtyBuilder {
 
     final List<String> command;
     Path workingDir;
@@ -39,24 +39,24 @@ public final class InteractiveBuilder {
     StreamConsumer outputConsumer;      // called per chunk on the combined PTY stream
     Map<String, String> extraEnv = new HashMap<>();
 
-    public InteractiveBuilder(List<String> command) {
+    public PtyBuilder(List<String> command) {
         this.command = command;
     }
 
     // ── Configuration ─────────────────────────────────────────────────────
 
-    public InteractiveBuilder workingDir(Path dir)         { this.workingDir = dir; return this; }
-    public InteractiveBuilder timeout(Duration t)          { this.timeout = t; return this; }
-    public InteractiveBuilder noTimeout()                  { this.timeout = null; return this; }
+    public PtyBuilder workingDir(Path dir)         { this.workingDir = dir; return this; }
+    public PtyBuilder timeout(Duration t)          { this.timeout = t; return this; }
+    public PtyBuilder noTimeout()                  { this.timeout = null; return this; }
 
     /** Sets the PTY window dimensions. Default is 80 × 24. */
-    public InteractiveBuilder ptySize(int cols, int rows)  { this.ptyCols = cols; this.ptyRows = rows; return this; }
+    public PtyBuilder ptySize(int cols, int rows)  { this.ptyCols = cols; this.ptyRows = rows; return this; }
 
     /**
      * Registers a consumer called with each raw byte chunk from the PTY output.
      * The PTY merges stdout and stderr — there is only one combined stream.
      */
-    public InteractiveBuilder onOutput(StreamConsumer consumer) { this.outputConsumer = consumer; return this; }
+    public PtyBuilder onOutput(StreamConsumer consumer) { this.outputConsumer = consumer; return this; }
 
     /**
      * Captures all PTY output into the {@code stdout} field of
@@ -64,8 +64,8 @@ public final class InteractiveBuilder {
      * Bytes are available once the outcome future resolves.
      */
 
-    public InteractiveBuilder env(String key, String value){ this.extraEnv.put(key, value); return this; }
-    public InteractiveBuilder envMap(Map<String, String> e){ this.extraEnv.putAll(e); return this; }
+    public PtyBuilder env(String key, String value){ this.extraEnv.put(key, value); return this; }
+    public PtyBuilder envMap(Map<String, String> e){ this.extraEnv.putAll(e); return this; }
 
     // ── Execution ─────────────────────────────────────────────────────────
 
