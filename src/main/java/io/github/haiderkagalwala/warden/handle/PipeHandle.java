@@ -12,19 +12,21 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Handle to an asynchronously running process.
  *
+ * <p>Write to the child process via {@link #writeLine}, {@link #write(String)}, or
+ * {@link #write(byte[])} — all flush immediately.
+ *
  * <h3>Stream ownership</h3>
- * <ul>
- *   <li>{@link #stdin()} — always safe to write to. Flush after each write;
- *       close to send EOF to the child process.</li>
- *   <li>{@link #stdout()} — only read directly if you did <em>not</em> configure
- *       {@code captureStdout()} or {@code onStdout()} on the builder. Those options
- *       attach a background drainer; competing reads produce corrupt, interleaved data.</li>
- *   <li>{@link #stderr()} — same rule as stdout.</li>
- * </ul>
+ * <p>{@link #stdout()} and {@link #stderr()} are safe to read directly only if no
+ * {@code onStdout} / {@code onStderr} consumer was configured on the builder. A configured
+ * consumer runs a background drainer on the same stream; competing reads produce corrupt,
+ * interleaved data.
+ *
+ * <p>{@link #stdin()} is always safe to write to. Flush after each write; close to signal
+ * EOF to the child process.
  *
  * <h3>Outcome</h3>
- * The future from {@link #outcome()} completes <em>after</em> the process exits
- * <em>and</em> all background drainers have finished flushing captured bytes.
+ * <p>The future from {@link #outcome()} completes after the process exits and all background
+ * drain tasks have finished.
  */
 public final class PipeHandle {
 
@@ -42,43 +44,41 @@ public final class PipeHandle {
         this.cancelled     = cancelled;
         this.cancelAction  = cancelAction;
     }
+
+    /** Writes {@code line + "\n"} to stdin and flushes immediately. Returns {@code this} for chaining. */
     public PipeHandle writeLine(String line) throws IOException {
         return write((line + "\n").getBytes(StandardCharsets.UTF_8));
     }
 
-    /**
-     * Writes {@code text} without appending a newline — useful for raw control
-     * sequences (e.g. TAB completion, arrow keys). Chainable.
-     */
+    /** Writes {@code text} to stdin without a trailing newline and flushes immediately. Returns {@code this} for chaining. */
     public PipeHandle write(String text) throws IOException {
         return write(text.getBytes(StandardCharsets.UTF_8));
     }
 
-    /** Writes raw bytes to stdin and flushes immediately. Chainable. */
+    /** Writes raw bytes to stdin and flushes immediately. Returns {@code this} for chaining. */
     public PipeHandle write(byte[] bytes) throws IOException {
         var stdin = process.getOutputStream();
         stdin.write(bytes);
         stdin.flush();
         return this;
     }
-    // ── Stream access ─────────────────────────────────────────────────────
 
-    /** Write to the process stdin. Flush after writes; close to signal EOF. */
+    /** Returns the process stdin stream. Flush after writes; close to signal EOF to the child process. */
     public OutputStream stdin()  { return process.getOutputStream(); }
 
-    /** Read process stdout directly. See class Javadoc for ownership rules. */
+    /** Returns the process stdout stream. See class Javadoc for ownership rules. */
     public InputStream  stdout() { return process.getInputStream(); }
 
-    /** Read process stderr directly. See class Javadoc for ownership rules. */
+    /** Returns the process stderr stream. See class Javadoc for ownership rules. */
     public InputStream  stderr() { return process.getErrorStream(); }
 
-    // ── Lifecycle ─────────────────────────────────────────────────────────
-
+    /** Returns {@code true} if the process is still running. */
     public boolean isAlive() { return process.isAlive(); }
 
     /**
-     * Gracefully kills the process tree (SIGTERM → 3 s wait → SIGKILL).
+     * Kills the process tree (SIGTERM → 3 s wait → SIGKILL).
      * The outcome future resolves as {@link ProcessOutcome.Killed}.
+     * Idempotent — safe to call more than once.
      */
     public void cancel() {
         if (cancelled.compareAndSet(false, true)) {
@@ -86,15 +86,13 @@ public final class PipeHandle {
         }
     }
 
-    // ── Outcome ───────────────────────────────────────────────────────────
-
     /**
-     * Async outcome future. Resolves once the process exits and all background
-     * drain tasks have finished. The {@link ProcessOutcome} variant tells you
-     * whether it completed normally, timed out, was cancelled, or failed.
+     * Returns a future that resolves once the process exits and all background drain tasks
+     * have finished. The {@link ProcessOutcome} variant indicates whether the process
+     * completed normally, timed out, was cancelled, or failed.
      */
     public CompletableFuture<ProcessOutcome> outcome() { return outcomeFuture; }
 
-    /** Blocks the calling thread until the process finishes and returns its outcome. */
+    /** Blocks until the process finishes and returns its outcome. */
     public ProcessOutcome await() { return outcomeFuture.join(); }
 }

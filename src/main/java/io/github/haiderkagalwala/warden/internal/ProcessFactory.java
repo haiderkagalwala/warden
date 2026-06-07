@@ -2,16 +2,15 @@ package io.github.haiderkagalwala.warden.internal;
 
 /**
  * Builds a configured {@link ProcessBuilder} from a {@link ProcessConfig} snapshot.
- * Used only by the execution engines.
  */
 final class ProcessFactory {
 
     private ProcessFactory() {}
 
     /**
-     * For synchronous execution.
-     * Aggressively applies OS-level {@code DISCARD} for streams that won't be read,
-     * avoiding unnecessary pipes and saving heap.
+     * Builds a {@link ProcessBuilder} for synchronous execution.
+     * Applies OS-level {@code DISCARD} to any stream that has neither a consumer nor a file
+     * redirect, avoiding unnecessary pipe allocation.
      */
      static ProcessBuilder forSync(ProcessConfig config) {
         var pb = base(config);
@@ -43,6 +42,11 @@ final class ProcessFactory {
         return pb;
     }
 
+    /**
+     * Builds a {@link ProcessBuilder} for async execution.
+     * Does not apply {@code DISCARD} — streams remain open and accessible via
+     * {@link io.github.haiderkagalwala.warden.handle.PipeHandle} for direct reading.
+     */
     static ProcessBuilder forAsync(ProcessConfig config) {
         var pb = base(config);
 
@@ -50,7 +54,6 @@ final class ProcessFactory {
             return pb;
         }
 
-        // If none of them are set, user must use InputStream to handle the process output
         if (config.redirectStdout() != null) pb.redirectOutput(config.redirectStdout());
 
         if (!config.mergeOutputAndError() && config.redirectStderr() != null) {
@@ -61,8 +64,10 @@ final class ProcessFactory {
         return pb;
     }
 
-    // ── Shared base configuration ──────────────────────────────────────────
-
+    /**
+     * Applies configuration common to both sync and async execution: command, working directory,
+     * environment, {@code inheritIO}, merged error stream, and stdin redirect.
+     */
     private static ProcessBuilder base(ProcessConfig config) {
         var pb = new ProcessBuilder(config.command());
 

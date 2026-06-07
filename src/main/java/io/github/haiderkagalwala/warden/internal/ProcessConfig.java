@@ -9,8 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Immutable snapshot of a {@link CommandBuilder}
- * configuration, passed to the execution engines.
+ * Immutable snapshot of a {@link CommandBuilder} configuration, passed to the execution engines.
  */
 record ProcessConfig(
         List<String> command,
@@ -27,6 +26,4 @@ record ProcessConfig(
         Map<String, String> extraEnv,
         boolean clearEnv
 ) {
-    /** Returns {@code true} if {@code exitCode} is in the configured success-exit-code set. */
-
 }

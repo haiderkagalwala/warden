@@ -12,21 +12,14 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Async execution engine. Launches a process and returns immediately with a
- * {@link PipeHandle} handle — never blocks the calling thread.
+ * Async execution engine. Launches a process and returns a {@link PipeHandle} immediately —
+ * never blocks the calling thread.
  *
- * <h3>Design</h3>
- * <ol>
- *   <li>Start the process via  (no DISCARD redirects —
- *       raw streams stay open for the caller if desired).</li>
- *   <li>Submit background drain tasks to a virtual-thread executor (only when a
- *       consumer callback was configured).</li>
- *   <li>Call {@code executor.shutdown()} — non-blocking, just gates new submissions.</li>
- *   <li>Register an async watchdog via {@code process.onExit()} — never blocks.</li>
- *   <li>In the {@code handle()} callback: kill if needed, then call
- *       {@code executor.close()} which waits briefly until drains finish (streams are
- *       at EOF by this point). Only then resolve the outcome future.</li>
- * </ol>
+ * <p>Streams are not DISCARDed so the caller can read them directly via the handle.
+ * If consumers were configured, background drain tasks run on virtual threads. The executor
+ * is shut down after all tasks are submitted (non-blocking), then closed inside the
+ * {@code process.onExit()} callback once the process is dead and streams are at EOF.
+ * The outcome future resolves only after drains complete.
  */
 final class AsyncExecutionEngine {
 
@@ -38,11 +31,9 @@ final class AsyncExecutionEngine {
 
     PipeHandle executeAsync() throws IOException {
 
-        // ── 1. Start process (no DISCARD — expose streams via RunningProcess) ──
         var process   = ProcessFactory.forAsync(config).start();
         var startTime = Instant.now();
 
-        // ── 2. Zombie prevention ───────────────────────────────────────────────
         var shutdownHook = Thread.ofVirtual().unstarted(() -> TreeReaper.destroy(process));
         Runtime.getRuntime().addShutdownHook(shutdownHook);
 
@@ -71,9 +62,8 @@ final class AsyncExecutionEngine {
             ));
         }
 
-        executor.shutdown(); // non-blocking: gates new submissions, drain tasks keep running
+        executor.shutdown();
 
-        // ── 4. Async watchdog ──────────────────────────────────────────────────
         var baseFuture = process.onExit();
         if (config.timeoutEnabled()) {
             baseFuture = baseFuture.orTimeout(config.timeout().toMillis(), TimeUnit.MILLISECONDS);
@@ -81,12 +71,11 @@ final class AsyncExecutionEngine {
 
         var cancelled = new AtomicBoolean(false);
 
-        // ── 5. Outcome resolution ──────────────────────────────────────────────
         var outcomeFuture = baseFuture.handle((p, ex) -> {
             Runtime.getRuntime().removeShutdownHook(shutdownHook);
 
             if (ex != null) TreeReaper.destroy(process);
-            executor.close(); // waits for drain tasks to finish now that process is dead
+            executor.close();
 
             var duration = Duration.between(startTime, Instant.now());
 

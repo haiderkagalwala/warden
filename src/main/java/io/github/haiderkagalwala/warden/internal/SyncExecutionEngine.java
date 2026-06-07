@@ -12,15 +12,11 @@ import java.util.concurrent.TimeUnit;
 /**
  * Synchronous execution engine. Blocks the calling thread until the process exits.
  *
- * <h3>Design</h3>
- * <ol>
- *   <li>Start process via {@link ProcessFactory#forSync} — aggressively applies OS-level
- *       {@code DISCARD} for unused streams to avoid unnecessary pipes.</li>
- *   <li>Submit stdout and stderr drain tasks to a virtual-thread executor concurrently,
- *       preventing the 64 KB pipe-buffer deadlock on large output.</li>
- *   <li>Block on {@code waitFor()} — safe because drains run on separate virtual threads.</li>
- *   <li>Join drain futures before reading captured bytes.</li>
- * </ol>
+ * <p>Streams with a configured consumer are drained on virtual threads to prevent the
+ * 64 KB pipe-buffer deadlock on large output. The calling thread blocks on
+ * {@code waitFor()} and joins the drain futures before returning the outcome.
+ * If neither stream needs draining (both OS-managed via {@code inheritIO} or file redirects),
+ * execution takes a fast path that skips the executor entirely.
  */
 final class SyncExecutionEngine {
 
@@ -32,7 +28,6 @@ final class SyncExecutionEngine {
 
     ProcessOutcome execute() {
 
-        // ── 1. Start process ──────────────────────────────────────────────
         Process process;
         try {
             process = ProcessFactory.forSync(config).start();
@@ -42,7 +37,6 @@ final class SyncExecutionEngine {
 
         var startTime = Instant.now();
 
-        // ── 2. Shortcut: inheritIO or both streams redirected to file ─────
         if (isOsManaged()) {
             return waitAndBuild(process, startTime);
         }
@@ -68,7 +62,6 @@ final class SyncExecutionEngine {
                 ));
             }
 
-            // ── 4. Block until the process exits ──────────────────────────
             boolean finished;
             try {
                 if (config.timeoutEnabled()) {
@@ -109,8 +102,6 @@ final class SyncExecutionEngine {
         }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────
-
     private ProcessOutcome waitAndBuild(
             Process process, Instant startTime) {
         try {
@@ -142,6 +133,8 @@ final class SyncExecutionEngine {
         int exitCode = process.exitValue();
         return new ProcessOutcome.Completed(exitCode, exitCode == 0,duration);
     }
+
+    /** Returns {@code true} when both streams are fully OS-managed and need no draining. */
     private boolean isOsManaged() {
         if (config.inheritIO()) return true;
         boolean stdoutHandled = config.redirectStdout() != null;

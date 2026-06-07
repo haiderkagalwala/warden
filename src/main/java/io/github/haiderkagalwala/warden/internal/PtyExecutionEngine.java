@@ -15,17 +15,14 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Launches a PTY (pseudo-terminal) process via pty4j and returns an
- * {@link PtyHandle} handle immediately — never blocks the calling thread.
+ * Launches a PTY (pseudo-terminal) process via pty4j and returns a {@link PtyHandle}
+ * immediately — never blocks the calling thread.
  *
- * <h3>PTY characteristics</h3>
- * <ul>
- *   <li>stdout and stderr are merged into the single PTY master stream.</li>
- *   <li>The child process sees {@code isatty()} = true, so line-buffering and
- *       prompts work as expected.</li>
- *   <li>Terminal dimensions can be changed at runtime via
- *       {@link PtyHandle#resize(int, int)}.</li>
- * </ul>
+ * <p>The PTY merges stdout and stderr into a single master stream, and the child process
+ * sees {@code isatty() == true}, so prompts and line-buffering behave as in a real terminal.
+ * A drain task runs on a virtual thread to consume the output stream; if no consumer was
+ * configured, output is silently discarded via {@link StreamConsumer#NOOP}. Terminal
+ * dimensions can be changed at runtime via {@link PtyHandle#resize(int, int)}.
  */
 final class PtyExecutionEngine {
 
@@ -37,12 +34,9 @@ final class PtyExecutionEngine {
 
     PtyHandle start() throws IOException {
 
-
-        // ── 1. Build PTY environment (inherit current env + overrides) ─────────
         var env = new HashMap<>(System.getenv());
         if (!config.extraEnv().isEmpty()) env.putAll(config.extraEnv());
 
-        // ── 2. Launch PTY process ──────────────────────────────────────────────
         var ptyBuilder = new PtyProcessBuilder()
                 .setCommand(config.command().toArray(new String[0]))
                 .setRedirectErrorStream(true)
@@ -56,7 +50,6 @@ final class PtyExecutionEngine {
         var process   = ptyBuilder.start();
         var startTime = Instant.now();
 
-        // ── 3. Zombie prevention ───────────────────────────────────────────────
         var shutdownHook = Thread.ofVirtual().unstarted(() -> PtyTreeReaper.destroy(process));
         Runtime.getRuntime().addShutdownHook(shutdownHook);
 
@@ -74,7 +67,6 @@ final class PtyExecutionEngine {
 
         executor.shutdown();
 
-        // ── 5. Async watchdog ──────────────────────────────────────────────────
         var baseFuture = process.onExit();
         if (config.timeout() != null) {
             baseFuture = baseFuture.orTimeout(config.timeout().toMillis(), TimeUnit.MILLISECONDS);
@@ -82,7 +74,6 @@ final class PtyExecutionEngine {
 
         var cancelled = new AtomicBoolean(false);
 
-        // ── 6. Outcome resolution ──────────────────────────────────────────────
         var outcomeFuture = baseFuture.handle((p, ex) -> {
             Runtime.getRuntime().removeShutdownHook(shutdownHook);
 

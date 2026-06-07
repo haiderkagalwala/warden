@@ -15,10 +15,10 @@ import java.util.Map;
  * Fluent builder for PTY (pseudo-terminal) process execution.
  *
  * <p>Obtain an instance via {@link Warden#interactive(String...)}. Call {@link #start()}
- * to launch the process and receive an {@link PtyHandle} handle immediately.
+ * to launch the process and receive a {@link PtyHandle} immediately.
  *
  * <pre>{@code
- * InteractiveProcess shell = Warden.interactive("bash")
+ * PtyHandle shell = Warden.interactive("bash")
  *         .ptySize(220, 50)
  *         .onOutput(ProcessStreams.printToStdout())
  *         .start();
@@ -33,51 +33,44 @@ public final class PtyBuilder {
 
     final List<String> command;
     Path workingDir;
-    Duration timeout;                   // null = no timeout
+    Duration timeout;
     int ptyCols                 = 80;
     int ptyRows                 = 24;
-    StreamConsumer outputConsumer;      // called per chunk on the combined PTY stream
+    StreamConsumer outputConsumer;
     Map<String, String> extraEnv = new HashMap<>();
 
     public PtyBuilder(List<String> command) {
         this.command = command;
     }
 
-    // ── Configuration ─────────────────────────────────────────────────────
-
+    /** Sets the working directory for the PTY process. */
     public PtyBuilder workingDir(Path dir)         { this.workingDir = dir; return this; }
+
+    /** Sets the execution timeout. */
     public PtyBuilder timeout(Duration t)          { this.timeout = t; return this; }
+
+    /** Disables the execution timeout. */
     public PtyBuilder noTimeout()                  { this.timeout = null; return this; }
 
     /** Sets the PTY window dimensions. Default is 80 × 24. */
     public PtyBuilder ptySize(int cols, int rows)  { this.ptyCols = cols; this.ptyRows = rows; return this; }
 
-    /**
-     * Registers a consumer called with each raw byte chunk from the PTY output.
-     * The PTY merges stdout and stderr — there is only one combined stream.
-     */
+    /** Registers a consumer called with each raw byte chunk from the PTY output stream (stdout and stderr merged). */
     public PtyBuilder onOutput(StreamConsumer consumer) { this.outputConsumer = consumer; return this; }
 
-    /**
-     * Captures all PTY output into the {@code stdout} field of
-     * {@link io.github.haiderkagalwala.warden.result.ProcessOutcome.Completed}.
-     * Bytes are available once the outcome future resolves.
-     */
-
+    /** Adds a single environment variable. */
     public PtyBuilder env(String key, String value){ this.extraEnv.put(key, value); return this; }
+
+    /** Adds multiple environment variables. */
     public PtyBuilder envMap(Map<String, String> e){ this.extraEnv.putAll(e); return this; }
 
-    // ── Execution ─────────────────────────────────────────────────────────
-
     /**
-     * Launches the PTY process and returns an {@link PtyHandle} handle immediately.
+     * Launches the PTY process and returns a {@link PtyHandle} immediately.
      * Use the handle to write to stdin, resize the terminal, or cancel.
      */
     public PtyHandle start() throws IOException {
         return new PtyExecutionEngine(snapshot()).start();
     }
-
-    // ── Internal ──────────────────────────────────────────────────────────
 
     private PtyConfig snapshot() {
         return new PtyConfig(

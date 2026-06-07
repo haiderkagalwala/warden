@@ -6,23 +6,23 @@ import io.github.haiderkagalwala.warden.internal.PtyBuilder;
 import java.util.List;
 
 /**
- * Entry point for the warden process execution library.
+ * Entry point for the Warden process execution library.
  *
  * <pre>{@code
- * // Synchronous
- * ProcessOutcome r = Warden.run("git", "status")
- *         .captureStdout()
+ * // Synchronous — blocks until the process exits
+ * ProcessOutcome outcome = Warden.run("git", "status")
+ *         .onStdout(ProcessStreams.printToStdout())
  *         .execute();
  *
- * // Asynchronous — non-blocking, returns a handle immediately
- * RunningProcess rp = Warden.run("tail", "-f", "/var/log/app.log")
+ * // Asynchronous — returns a handle immediately
+ * PipeHandle handle = Warden.run("tail", "-f", "/var/log/app.log")
  *         .noTimeout()
  *         .onStdout(ProcessStreams.printToStdout())
  *         .executeAsync();
- * rp.cancel();
+ * handle.cancel();
  *
  * // Interactive PTY
- * InteractiveProcess shell = Warden.interactive("bash")
+ * PtyHandle shell = Warden.interactive("bash")
  *         .ptySize(220, 50)
  *         .onOutput(ProcessStreams.printToStdout())
  *         .start();
@@ -38,17 +38,17 @@ public final class Warden {
     private Warden() {}
 
     /**
-     * Creates a builder for a normal (non-PTY) command.
-     * Use {@link CommandBuilder#execute()} to block, or
-     * {@link CommandBuilder#executeAsync()} for a non-blocking handle.
+     * Creates a builder for a normal (non-PTY) process.
+     * Call {@link CommandBuilder#execute()} to block until the process exits,
+     * or {@link CommandBuilder#executeAsync()} for a non-blocking {@link io.github.haiderkagalwala.warden.handle.PipeHandle}.
      */
     public static CommandBuilder run(String... command) {
         return new CommandBuilder(List.of(command));
     }
 
     /**
-     * Creates a builder for a PTY (pseudo-terminal) command.
-     * Use {@link PtyBuilder#start()} to launch.
+     * Creates a builder for a PTY (pseudo-terminal) process.
+     * Call {@link PtyBuilder#start()} to launch and receive a {@link io.github.haiderkagalwala.warden.handle.PtyHandle}.
      */
     public static PtyBuilder interactive(String... command) {
         return new PtyBuilder(List.of(command));

@@ -7,8 +7,9 @@ import java.util.Arrays;
 import java.util.concurrent.Callable;
 
 /**
- * Drains a single {@link InputStream} on a virtual thread.
- * Package-private — used only by the execution engines.
+ * Reads a single {@link InputStream} to EOF on a virtual thread, forwarding each chunk to
+ * a {@link StreamConsumer}. Used by the execution engines to prevent pipe-buffer deadlocks
+ * on large output.
  */
 final class StreamDrainer implements Callable<Void> {
 

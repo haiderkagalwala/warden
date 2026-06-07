@@ -69,7 +69,7 @@ public final class ProcessStreams {
             buf.append(new String(chunk, StandardCharsets.UTF_8));
             int idx;
             while ((idx = buf.indexOf("\n")) != -1) {
-                var line = buf.substring(0, idx).stripTrailing(); // strips \r on Windows
+                var line = buf.substring(0, idx).stripTrailing();
                 lineAction.accept(line);
                 buf.delete(0, idx + 1);
             }
