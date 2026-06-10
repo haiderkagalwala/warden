@@ -1,6 +1,6 @@
-package io.github.haiderkagalwala.warden.internal;
+package io.github.haiderkagalwala.nexec.internal;
 
-import io.github.haiderkagalwala.warden.streams.StreamConsumer;
+import io.github.haiderkagalwala.nexec.streams.StreamConsumer;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -24,6 +24,16 @@ record ProcessConfig(
         File redirectStderr,
         File redirectStdin,
         Map<String, String> extraEnv,
-        boolean clearEnv
+        boolean clearEnv,
+        int[] successExitCodes
 ) {
+    ProcessConfig {
+        successExitCodes = successExitCodes.clone();
+    }
+
+    /** Returns {@code true} if {@code exitCode} is in the configured success-exit-code set. */
+    boolean isSuccess(int exitCode) {
+        for (int code : successExitCodes) if (code == exitCode) return true;
+        return false;
+    }
 }

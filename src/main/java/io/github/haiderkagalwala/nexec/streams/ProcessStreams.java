@@ -1,4 +1,4 @@
-package io.github.haiderkagalwala.warden.streams;
+package io.github.haiderkagalwala.nexec.streams;
 
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -44,7 +44,7 @@ public final class ProcessStreams {
      *
      * <pre>{@code
      * try (var fos = new FileOutputStream("out.txt")) {
-     *     Warden.run("...").onStdout(ProcessStreams.toOutputStream(fos)).execute();
+     *     Nexec.run("...").onStdout(ProcessStreams.toOutputStream(fos)).execute();
      * }
      * }</pre>
      */
@@ -82,8 +82,7 @@ public final class ProcessStreams {
      * re-thrown after all consumers have been invoked.
      *
      * <pre>{@code
-     * // Print live AND accumulate into a StringBuilder
-     * var sb = new StringBuilder();
+     * var sb = new StringBuffer();
      * ProcessStreams.tee(ProcessStreams.printToStdout(), ProcessStreams.toStringBuilder(sb))
      * }</pre>
      */

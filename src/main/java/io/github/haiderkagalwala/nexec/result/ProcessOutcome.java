@@ -1,6 +1,5 @@
-package io.github.haiderkagalwala.warden.result;
+package io.github.haiderkagalwala.nexec.result;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 /**
@@ -34,14 +33,12 @@ public sealed interface ProcessOutcome permits
 
         /** Returns {@code true} if the process exited with a success exit code. */
         public boolean succeeded() { return success; }
-
     }
 
     /** Process was killed because the configured timeout expired. */
     record TimedOut(
             Duration elapsed
-    ) implements ProcessOutcome {
-    }
+    ) implements ProcessOutcome {}
 
     /**
      * Process was explicitly cancelled by the caller via {@code cancel()}.
@@ -49,8 +46,7 @@ public sealed interface ProcessOutcome permits
      */
     record Killed(
             Duration elapsed
-    ) implements ProcessOutcome {
-    }
+    ) implements ProcessOutcome {}
 
     /** An exception occurred — the process never started or an I/O failure happened mid-execution. */
     record Failed(Throwable cause) implements ProcessOutcome {}

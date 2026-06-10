@@ -1,6 +1,6 @@
-# Warden
+# nexec
 
-A modern Java 21 process execution library built for the Virtual Threads era. Warden eliminates common subprocess pitfalls — 64 KB stream deadlocks, zombie processes, and blocked threads — and delivers native interactive terminal (PTY) support out of the box.
+A modern Java 21 process execution library built for the Virtual Threads era. nexec eliminates common subprocess pitfalls — 64 KB stream deadlocks, zombie processes, and blocked threads — and delivers native interactive terminal (PTY) support out of the box.
 
 ---
 
@@ -22,7 +22,7 @@ A modern Java 21 process execution library built for the Virtual Threads era. Wa
 
 <dependency>
     <groupId>com.github.haiderkagalwala</groupId>
-    <artifactId>warden</artifactId>
+    <artifactId>nexec</artifactId>
     <version>main-SNAPSHOT</version>
 </dependency>
 ```
@@ -33,19 +33,19 @@ A modern Java 21 process execution library built for the Virtual Threads era. Wa
 
 ```java
 // Synchronous — blocks until the process exits
-ProcessOutcome outcome = Warden.run("git", "status")
+ProcessOutcome outcome = Nexec.run("git", "status")
         .onStdout(ProcessStreams.printToStdout())
         .execute();
 
 // Asynchronous — returns a handle immediately
-PipeHandle handle = Warden.run("tail", "-f", "/var/log/app.log")
+PipeHandle handle = Nexec.run("tail", "-f", "/var/log/app.log")
         .noTimeout()
         .onStdout(ProcessStreams.printToStdout())
         .executeAsync();
 handle.cancel();
 
 // Interactive PTY
-PtyHandle shell = Warden.interactive("bash")
+PtyHandle shell = Nexec.interactive("bash")
         .ptySize(220, 50)
         .onOutput(ProcessStreams.printToStdout())
         .start();
@@ -59,10 +59,10 @@ shell.await();
 
 ### Synchronous
 
-`Warden.run(...).execute()` blocks the calling thread until the process exits. Stdout and stderr are drained on virtual threads in the background so large output never causes a pipe-buffer deadlock.
+`Nexec.run(...).execute()` blocks the calling thread until the process exits. Stdout and stderr are drained on virtual threads in the background so large output never causes a pipe-buffer deadlock.
 
 ```java
-ProcessOutcome outcome = Warden.run("mvn", "package")
+ProcessOutcome outcome = Nexec.run("mvn", "package")
         .timeout(Duration.ofMinutes(5))
         .onStdout(ProcessStreams.printToStdout())
         .onStderr(ProcessStreams.printToStderr())
@@ -78,10 +78,10 @@ switch (outcome) {
 
 ### Asynchronous
 
-`Warden.run(...).executeAsync()` launches the process and returns a `PipeHandle` immediately without blocking. The handle exposes an outcome future, direct stream access, and a `cancel()` method.
+`Nexec.run(...).executeAsync()` launches the process and returns a `PipeHandle` immediately without blocking. The handle exposes an outcome future, direct stream access, and a `cancel()` method.
 
 ```java
-PipeHandle handle = Warden.run("sleep", "30")
+PipeHandle handle = Nexec.run("sleep", "30")
         .timeout(Duration.ofSeconds(10))
         .executeAsync();
 
@@ -92,10 +92,10 @@ ProcessOutcome outcome = handle.await();
 
 ### Interactive PTY
 
-`Warden.interactive(...).start()` launches the process under a pseudo-terminal so the child sees `isatty() == true`. Stdout and stderr are merged into a single PTY master stream. Use this for processes that depend on terminal behaviour — prompts, line-buffering, `ncurses` UIs.
+`Nexec.interactive(...).start()` launches the process under a pseudo-terminal so the child sees `isatty() == true`. Stdout and stderr are merged into a single PTY master stream. Use this for processes that depend on terminal behaviour — prompts, line-buffering, `ncurses` UIs.
 
 ```java
-PtyHandle shell = Warden.interactive("python3")
+PtyHandle shell = Nexec.interactive("python3")
         .ptySize(200, 50)
         .onOutput(ProcessStreams.printToStdout())
         .start();
@@ -124,7 +124,7 @@ Every execution resolves to a `ProcessOutcome`, a sealed interface with four var
 
 ## Builder Options
 
-### `CommandBuilder` — via `Warden.run`
+### `CommandBuilder` — via `Nexec.run`
 
 | Method | Description |
 |---|---|
@@ -142,7 +142,7 @@ Every execution resolves to a `ProcessOutcome`, a sealed interface with four var
 | `envMap(Map)` | Add multiple environment variables. |
 | `clearEnv()` | Clear the inherited environment before adding variables. |
 
-### `PtyBuilder` — via `Warden.interactive`
+### `PtyBuilder` — via `Nexec.interactive`
 
 | Method | Description |
 |---|---|
@@ -150,6 +150,9 @@ Every execution resolves to a `ProcessOutcome`, a sealed interface with four var
 | `noTimeout()` | Explicitly disable the timeout. |
 | `ptySize(cols, rows)` | Set terminal dimensions. Default: 80 × 24. |
 | `onOutput(StreamConsumer)` | Callback invoked with each raw chunk from the PTY output stream. |
+| `useConPty()` | Windows only: use the ConPTY backend (requires Windows 10 v1903+). |
+| `useWinPty()` | Windows only: use the WinPTY backend (default, works on Windows 7+). |
+| `windowsAnsiColors()` | Windows only: enable ANSI color sequence processing. |
 | `workingDir(Path)` | Set the working directory. |
 | `env(key, value)` | Add an environment variable. |
 | `envMap(Map)` | Add multiple environment variables. |
@@ -185,7 +188,7 @@ StreamConsumer consumer = chunk -> {
 ### `PipeHandle` — async processes
 
 ```java
-PipeHandle handle = Warden.run("cat").noTimeout().executeAsync();
+PipeHandle handle = Nexec.run("cat").noTimeout().executeAsync();
 
 handle.writeLine("hello");      // write a line to stdin
 handle.write("raw text");       // write without a newline
@@ -206,7 +209,7 @@ handle.await();                 // block until done
 ### `PtyHandle` — PTY processes
 
 ```java
-PtyHandle shell = Warden.interactive("bash").start();
+PtyHandle shell = Nexec.interactive("bash").start();
 
 shell.writeLine("ls -la");      // write a line to stdin
 shell.write("\t");              // tab-complete, arrow keys, control sequences
@@ -226,7 +229,7 @@ shell.await();
 
 ## Design Notes
 
-**No deadlocks on large output.** When a `StreamConsumer` is configured, Warden drains that stream on a virtual thread concurrently with `waitFor()`. Without a consumer, unused streams are discarded at the OS level via `ProcessBuilder.Redirect.DISCARD` — no pipe is allocated and the child process never blocks on a full buffer.
+**No deadlocks on large output.** When a `StreamConsumer` is configured, nexec drains that stream on a virtual thread concurrently with `waitFor()`. Without a consumer, unused streams are discarded at the OS level via `ProcessBuilder.Redirect.DISCARD` — no pipe is allocated and the child process never blocks on a full buffer.
 
 **Process tree cleanup.** `cancel()` and timeout expiry both invoke a tree reaper that snapshots all descendants, sends SIGTERM to every member of the tree, waits up to 3 seconds, then SIGKILLs any survivors. This prevents orphaned background processes.
 

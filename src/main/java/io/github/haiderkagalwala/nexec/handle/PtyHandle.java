@@ -1,6 +1,6 @@
-package io.github.haiderkagalwala.warden.handle;
+package io.github.haiderkagalwala.nexec.handle;
 
-import io.github.haiderkagalwala.warden.result.ProcessOutcome;
+import io.github.haiderkagalwala.nexec.result.ProcessOutcome;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,7 +38,7 @@ public final class PtyHandle {
                      CompletableFuture<ProcessOutcome> outcomeFuture,
                      AtomicBoolean cancelled,
                      Runnable cancelAction) {
-            this.process       = process;
+        this.process       = process;
         this.outcomeFuture = outcomeFuture;
         this.cancelled     = cancelled;
         this.cancelAction  = cancelAction;

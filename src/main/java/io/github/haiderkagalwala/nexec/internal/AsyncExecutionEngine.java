@@ -1,7 +1,7 @@
-package io.github.haiderkagalwala.warden.internal;
+package io.github.haiderkagalwala.nexec.internal;
 
-import io.github.haiderkagalwala.warden.handle.PipeHandle;
-import io.github.haiderkagalwala.warden.result.ProcessOutcome;
+import io.github.haiderkagalwala.nexec.handle.PipeHandle;
+import io.github.haiderkagalwala.nexec.result.ProcessOutcome;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -36,7 +36,6 @@ final class AsyncExecutionEngine {
 
         var shutdownHook = Thread.ofVirtual().unstarted(() -> TreeReaper.destroy(process));
         Runtime.getRuntime().addShutdownHook(shutdownHook);
-
 
         var executor = Executors.newVirtualThreadPerTaskExecutor();
 
@@ -84,7 +83,7 @@ final class AsyncExecutionEngine {
             if (ex != null)                     return new ProcessOutcome.Failed(ex);
 
             int exitCode = p.exitValue();
-            return (ProcessOutcome) new ProcessOutcome.Completed(exitCode, exitCode == 0,  duration);
+            return (ProcessOutcome) new ProcessOutcome.Completed(exitCode, config.isSuccess(exitCode), duration);
         });
 
         return new PipeHandle(process, outcomeFuture, cancelled, () -> TreeReaper.destroy(process));

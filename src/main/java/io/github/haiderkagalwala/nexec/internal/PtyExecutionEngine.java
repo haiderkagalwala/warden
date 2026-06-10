@@ -1,9 +1,9 @@
-package io.github.haiderkagalwala.warden.internal;
+package io.github.haiderkagalwala.nexec.internal;
 
 import com.pty4j.PtyProcessBuilder;
-import io.github.haiderkagalwala.warden.handle.PtyHandle;
-import io.github.haiderkagalwala.warden.result.ProcessOutcome;
-import io.github.haiderkagalwala.warden.streams.StreamConsumer;
+import io.github.haiderkagalwala.nexec.handle.PtyHandle;
+import io.github.haiderkagalwala.nexec.result.ProcessOutcome;
+import io.github.haiderkagalwala.nexec.streams.StreamConsumer;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -23,6 +23,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * A drain task runs on a virtual thread to consume the output stream; if no consumer was
  * configured, output is silently discarded via {@link StreamConsumer#NOOP}. Terminal
  * dimensions can be changed at runtime via {@link PtyHandle#resize(int, int)}.
+ *
+ * <p>On Windows, the PTY backend (WinPTY vs ConPTY) and ANSI color support are controlled
+ * by the {@link PtyConfig#consoleMode()} and {@link PtyConfig#windowsAnsiColorEnabled()} flags.
  */
 final class PtyExecutionEngine {
 
@@ -42,7 +45,9 @@ final class PtyExecutionEngine {
                 .setRedirectErrorStream(true)
                 .setInitialColumns(config.ptyCols())
                 .setInitialRows(config.ptyRows())
-                .setEnvironment(env);
+                .setEnvironment(env)
+                .setConsole(config.consoleMode())
+                .setWindowsAnsiColorEnabled(config.windowsAnsiColorEnabled());
 
         if (config.workingDir() != null)
             ptyBuilder.setDirectory(config.workingDir().toString());
@@ -53,8 +58,7 @@ final class PtyExecutionEngine {
         var shutdownHook = Thread.ofVirtual().unstarted(() -> PtyTreeReaper.destroy(process));
         Runtime.getRuntime().addShutdownHook(shutdownHook);
 
-
-        var executor   = Executors.newVirtualThreadPerTaskExecutor();
+        var executor = Executors.newVirtualThreadPerTaskExecutor();
 
         var outputConsumer = config.outputConsumer() != null ? config.outputConsumer()
                 : StreamConsumer.NOOP;
@@ -63,7 +67,6 @@ final class PtyExecutionEngine {
                 process.getInputStream(),
                 outputConsumer
         ));
-
 
         executor.shutdown();
 
@@ -87,7 +90,7 @@ final class PtyExecutionEngine {
             if (ex != null)                     return new ProcessOutcome.Failed(ex);
 
             int exitCode = p.exitValue();
-            return (ProcessOutcome) new ProcessOutcome.Completed(exitCode, exitCode == 0, duration);
+            return (ProcessOutcome) new ProcessOutcome.Completed(exitCode, config.isSuccess(exitCode), duration);
         });
 
         return new PtyHandle(process, outcomeFuture, cancelled, () -> PtyTreeReaper.destroy(process));

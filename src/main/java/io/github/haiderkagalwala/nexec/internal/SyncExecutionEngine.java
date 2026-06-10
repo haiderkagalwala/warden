@@ -1,6 +1,6 @@
-package io.github.haiderkagalwala.warden.internal;
+package io.github.haiderkagalwala.nexec.internal;
 
-import io.github.haiderkagalwala.warden.result.ProcessOutcome;
+import io.github.haiderkagalwala.nexec.result.ProcessOutcome;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -41,20 +41,17 @@ final class SyncExecutionEngine {
             return waitAndBuild(process, startTime);
         }
 
-
-
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 
             Future<?> stdoutFuture = null;
             if (config.stdoutConsumer() != null && config.redirectStdout() == null) {
-                 stdoutFuture = executor.submit(new StreamDrainer(
-                                process.getInputStream(),
-                                config.stdoutConsumer()
+                stdoutFuture = executor.submit(new StreamDrainer(
+                        process.getInputStream(),
+                        config.stdoutConsumer()
                 ));
             }
 
             Future<?> stderrFuture = null;
-
             if (config.stderrConsumer() != null && !config.mergeOutputAndError() && config.redirectStderr() == null) {
                 stderrFuture = executor.submit(new StreamDrainer(
                         process.getErrorStream(),
@@ -70,7 +67,6 @@ final class SyncExecutionEngine {
                     process.waitFor();
                     finished = true;
                 }
-
                 if (!finished) {
                     TreeReaper.destroy(process);
                 }
@@ -80,20 +76,17 @@ final class SyncExecutionEngine {
                 return new ProcessOutcome.Failed(e);
             }
 
-
             try {
                 if (stdoutFuture != null) stdoutFuture.get();
                 if (stderrFuture != null) stderrFuture.get();
             } catch (Exception e) {
+                // If we already timed out, report that — not a drain failure.
+                if (!finished) return new ProcessOutcome.TimedOut(Duration.between(startTime, Instant.now()));
                 return new ProcessOutcome.Failed(e);
             }
 
             var duration = Duration.between(startTime, Instant.now());
-
-            if (!finished) {
-                return new ProcessOutcome.TimedOut(duration);
-            }
-
+            if (!finished) return new ProcessOutcome.TimedOut(duration);
             return buildCompleted(process, duration);
 
         } catch (Exception e) {
@@ -102,8 +95,7 @@ final class SyncExecutionEngine {
         }
     }
 
-    private ProcessOutcome waitAndBuild(
-            Process process, Instant startTime) {
+    private ProcessOutcome waitAndBuild(Process process, Instant startTime) {
         try {
             boolean finished;
             if (config.timeoutEnabled()) {
@@ -128,10 +120,9 @@ final class SyncExecutionEngine {
         }
     }
 
-    private ProcessOutcome buildCompleted(
-            Process process, Duration duration) {
+    private ProcessOutcome buildCompleted(Process process, Duration duration) {
         int exitCode = process.exitValue();
-        return new ProcessOutcome.Completed(exitCode, exitCode == 0,duration);
+        return new ProcessOutcome.Completed(exitCode, config.isSuccess(exitCode), duration);
     }
 
     /** Returns {@code true} when both streams are fully OS-managed and need no draining. */

@@ -1,9 +1,9 @@
-package io.github.haiderkagalwala.warden.internal;
+package io.github.haiderkagalwala.nexec.internal;
 
-import io.github.haiderkagalwala.warden.Warden;
-import io.github.haiderkagalwala.warden.handle.PipeHandle;
-import io.github.haiderkagalwala.warden.streams.StreamConsumer;
-import io.github.haiderkagalwala.warden.result.ProcessOutcome;
+import io.github.haiderkagalwala.nexec.Nexec;
+import io.github.haiderkagalwala.nexec.handle.PipeHandle;
+import io.github.haiderkagalwala.nexec.streams.StreamConsumer;
+import io.github.haiderkagalwala.nexec.result.ProcessOutcome;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,17 +16,17 @@ import java.util.Map;
 /**
  * Fluent builder for normal (non-PTY) process execution.
  *
- * <p>Obtain an instance via {@link Warden#run(String...)}. Call {@link #execute()} to
+ * <p>Obtain an instance via {@link Nexec#run(String...)}. Call {@link #execute()} to
  * block until the process exits, or {@link #executeAsync()} for a non-blocking {@link PipeHandle}.
  *
  * <pre>{@code
  * // Synchronous
- * ProcessOutcome outcome = Warden.run("git", "status")
+ * ProcessOutcome outcome = Nexec.run("git", "status")
  *         .onStdout(ProcessStreams.printToStdout())
  *         .execute();
  *
  * // Asynchronous
- * PipeHandle handle = Warden.run("tail", "-f", "/var/log/app.log")
+ * PipeHandle handle = Nexec.run("tail", "-f", "/var/log/app.log")
  *         .noTimeout()
  *         .onStdout(ProcessStreams.printToStdout())
  *         .executeAsync();
@@ -50,7 +50,7 @@ public final class CommandBuilder {
     boolean clearEnv            = false;
     int[] successExitCodes      = {0};
 
-     public CommandBuilder(List<String> command) {
+    public CommandBuilder(List<String> command) {
         this.command = command;
     }
 
@@ -68,7 +68,6 @@ public final class CommandBuilder {
 
     /** Clears the inherited environment before applying additions via {@link #env} or {@link #envMap}. */
     public CommandBuilder clearEnv()                     { this.clearEnv = true; return this; }
-//    public CommandBuilder successExitCodes(int... codes) { this.successExitCodes = codes; return this; }
 
     /** Registers a consumer called with each raw byte chunk from stdout. */
     public CommandBuilder onStdout(StreamConsumer consumer) {
@@ -111,6 +110,13 @@ public final class CommandBuilder {
     public CommandBuilder envMap(Map<String, String> e)  { this.extraEnv.putAll(e); return this; }
 
     /**
+     * Sets the exit codes that are treated as successful. Defaults to {@code {0}}.
+     * {@link io.github.haiderkagalwala.nexec.result.ProcessOutcome.Completed#succeeded()} returns
+     * {@code true} only when the process exit code is in this set.
+     */
+    public CommandBuilder successExitCodes(int... codes) { this.successExitCodes = codes.clone(); return this; }
+
+    /**
      * Blocks until the process exits and all output has been consumed.
      * Never throws for non-zero exit codes — check {@link ProcessOutcome.Completed#succeeded()} instead.
      */
@@ -141,7 +147,8 @@ public final class CommandBuilder {
                 redirectStderr,
                 redirectStdin,
                 Map.copyOf(extraEnv),
-                clearEnv
+                clearEnv,
+                successExitCodes.clone()
         );
     }
 }

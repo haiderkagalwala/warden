@@ -1,4 +1,4 @@
-package io.github.haiderkagalwala.warden.streams;
+package io.github.haiderkagalwala.nexec.streams;
 
 /**
  * Receives raw byte chunks drained from a process stream.
