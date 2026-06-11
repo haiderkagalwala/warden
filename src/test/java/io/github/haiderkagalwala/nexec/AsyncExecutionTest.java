@@ -4,9 +4,10 @@ import io.github.haiderkagalwala.nexec.handle.PtyHandle;
 import io.github.haiderkagalwala.nexec.result.ProcessOutcome;
 import io.github.haiderkagalwala.nexec.streams.ProcessStreams;
 import org.junit.jupiter.api.Test;
-
 import java.io.IOException;
 import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -49,21 +50,20 @@ class AsyncExecutionTest {
     // ── Cancel ────────────────────────────────────────────────────────────────
 
     @Test
-    void cancel_returnsKilled() throws IOException, InterruptedException {
+    void cancel_returnsKilled() throws IOException {
+        // executeAsync() returns only after the OS process is running — no sleep needed.
         var handle = Nexec.run(TestSupport.cmd("sleep", "60000"))
                 .noTimeout()
                 .executeAsync();
-        Thread.sleep(100);
         handle.cancel();
         assertInstanceOf(ProcessOutcome.Killed.class, handle.await());
     }
 
     @Test
-    void cancel_idempotent() throws IOException, InterruptedException {
+    void cancel_idempotent() throws IOException {
         var handle = Nexec.run(TestSupport.cmd("sleep", "60000"))
                 .noTimeout()
                 .executeAsync();
-        Thread.sleep(100);
         assertDoesNotThrow(() -> {
             handle.cancel();
             handle.cancel();
@@ -73,7 +73,7 @@ class AsyncExecutionTest {
     }
 
     @Test
-    void isAlive_trueWhileRunning_falseAfterCancel() throws IOException, InterruptedException {
+    void isAlive_trueWhileRunning_falseAfterCancel() throws IOException {
         var handle = Nexec.run(TestSupport.cmd("sleep", "60000"))
                 .noTimeout()
                 .executeAsync();
@@ -138,34 +138,48 @@ class AsyncExecutionTest {
         assertTrue(sb.toString().contains("pty_hello"), "got: " + sb);
     }
 
-//    @Test
-//    void pty_writeLine_processReceivesInput() throws IOException {
-//        var sb = new StringBuffer();
-//
-//        // 1. Launch a shell instead of cat
-//        PtyHandle shell = Nexec.interactive(TestSupport.cmd("sh")) // or "bash"
-//                .onOutput(ProcessStreams.toStringBuilder(sb))
-//                .start();
-//
-//        // 2. Send the echo command to prove we can write to the PTY
-//        shell.writeLine("echo pty_stdin_data");
-//
-//        // 3. Explicitly command the shell to terminate
-//        shell.writeLine("exit");
-//
-//        // 4. Block until the shell exits and the stream drains
-//        shell.await();
-//
-//        System.out.println("-----> " + sb.toString());
-//        assertTrue(sb.toString().contains("pty_stdin_data"), "got: " + sb);
-//    }
+    @Test
+    void withConsumer_largeOutput_doesNotDeadlock_async() throws IOException {
+        // In async mode streams are kept as pipes — without a consumer the pipe buffer
+        // fills and the process blocks. This test verifies the drain path handles large output.
+        var handle = Nexec.run(TestSupport.cmd("bigoutput"))
+                .onStdout(chunk -> {})   // drain and discard
+                .timeout(Duration.ofSeconds(15))
+                .executeAsync();
+        assertInstanceOf(ProcessOutcome.Completed.class, handle.await(),
+                "Async process deadlocked");
+    }
+
+
 
     @Test
-    void pty_cancel_returnsKilled() throws IOException, InterruptedException {
+    void pty_write_processReceivesInput() throws Exception {
+        // "ptyecho" prints "READY" once it is listening on stdin, then reads one line
+        // and echoes it. We block on a CountDownLatch until READY is observed — no
+        // arbitrary sleep, no timing dependency.
+        var ready = new CountDownLatch(1);
+        var sb    = new StringBuffer();
+
+        PtyHandle proc = Nexec.interactive(TestSupport.cmd("ptyecho"))
+                .onOutput(ProcessStreams.lines(line -> {
+                    sb.append(line).append("\n");
+                    if (line.contains("READY")) ready.countDown();
+                }))
+                .start();
+
+        assertTrue(ready.await(5, TimeUnit.SECONDS), "ptyecho did not signal READY");
+        proc.write("pty_stdin_data\r");
+        proc.await();
+
+        assertTrue(sb.toString().contains("pty_stdin_data"), "got: " + sb);
+    }
+
+    @Test
+    void pty_cancel_returnsKilled() throws IOException {
+        // PtyProcessBuilder.start() returns only after the process is running — no sleep needed.
         PtyHandle shell = Nexec.interactive(TestSupport.cmd("sleep", "60000"))
                 .noTimeout()
                 .start();
-        Thread.sleep(100);
         shell.cancel();
         assertInstanceOf(ProcessOutcome.Killed.class, shell.await());
     }
@@ -180,11 +194,10 @@ class AsyncExecutionTest {
     }
 
     @Test
-    void pty_cancel_idempotent() throws IOException, InterruptedException {
+    void pty_cancel_idempotent() throws IOException {
         PtyHandle shell = Nexec.interactive(TestSupport.cmd("sleep", "60000"))
                 .noTimeout()
                 .start();
-        Thread.sleep(100);
         assertDoesNotThrow(() -> {
             shell.cancel();
             shell.cancel();

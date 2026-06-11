@@ -71,7 +71,7 @@ final class AsyncExecutionEngine {
         var cancelled = new AtomicBoolean(false);
 
         var outcomeFuture = baseFuture.handle((p, ex) -> {
-            Runtime.getRuntime().removeShutdownHook(shutdownHook);
+            try {Runtime.getRuntime().removeShutdownHook(shutdownHook);} catch (Exception ignored) {}
 
             if (ex != null) TreeReaper.destroy(process);
             executor.close();

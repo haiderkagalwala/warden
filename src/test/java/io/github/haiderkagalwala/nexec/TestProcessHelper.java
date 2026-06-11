@@ -1,5 +1,7 @@
 package io.github.haiderkagalwala.nexec;
 
+import java.util.Arrays;
+
 /**
  * Subprocess entry point used exclusively by integration tests.
  *
@@ -56,6 +58,31 @@ public class TestProcessHelper {
                     System.out.println("output");
                     System.out.flush();
                 }
+            }
+            case "bigoutput" -> {
+                // 2MB — well past the 64KB pipe wall
+                byte[] data = new byte[2 * 1024 * 1024];
+                Arrays.fill(data, (byte) 'x');
+                System.out.write(data);
+                System.out.flush();
+            }
+
+            case "ptyecho" -> {
+                // Signals readiness, then reads one line from PTY stdin, echoes it,
+                // and exits. The READY marker lets the test synchronise without sleeping.
+                System.out.println("READY");
+                System.out.flush();
+                var line = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(System.in)).readLine();
+                if (line != null) {
+                    System.out.println(line);
+                    System.out.flush();
+                }
+            }
+            case "env" -> {
+                String val = System.getenv(args[1]);
+                System.out.println(val != null ? val : "NOT_SET");
+                System.out.flush();
             }
         }
     }

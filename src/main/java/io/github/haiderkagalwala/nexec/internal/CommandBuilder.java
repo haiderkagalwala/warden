@@ -120,7 +120,7 @@ public final class CommandBuilder {
      * Blocks until the process exits and all output has been consumed.
      * Never throws for non-zero exit codes — check {@link ProcessOutcome.Completed#succeeded()} instead.
      */
-    public ProcessOutcome execute() throws IOException {
+    public ProcessOutcome execute() {
         return new SyncExecutionEngine(snapshot()).execute();
     }
 
