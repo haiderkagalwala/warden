@@ -12,6 +12,18 @@ A modern Java 21 process execution library built for the Virtual Threads era. ne
 
 ## Installation
 
+### Maven Central
+
+```xml
+<dependency>
+    <groupId>io.github.haiderkagalwala</groupId>
+    <artifactId>nexec</artifactId>
+    <version>0.1.0</version>
+</dependency>
+```
+
+### JitPack (snapshots / early access)
+
 ```xml
 <repositories>
     <repository>
@@ -24,6 +36,20 @@ A modern Java 21 process execution library built for the Virtual Threads era. ne
     <groupId>com.github.haiderkagalwala</groupId>
     <artifactId>nexec</artifactId>
     <version>main-SNAPSHOT</version>
+</dependency>
+```
+
+### PTY support (optional)
+
+`Nexec.interactive()` requires [pty4j](https://github.com/JetBrains/pty4j) on the classpath.
+It is declared as an optional dependency so consumers who only use `Nexec.run()` do not pull it in transitively.
+Add it explicitly if you need interactive PTY features:
+
+```xml
+<dependency>
+    <groupId>org.jetbrains.pty4j</groupId>
+    <artifactId>pty4j</artifactId>
+    <version>0.13.11</version>
 </dependency>
 ```
 
@@ -44,7 +70,7 @@ PipeHandle handle = Nexec.run("tail", "-f", "/var/log/app.log")
         .executeAsync();
 handle.cancel();
 
-// Interactive PTY
+// Interactive PTY  (requires pty4j — see Installation)
 PtyHandle shell = Nexec.interactive("bash")
         .ptySize(220, 50)
         .onOutput(ProcessStreams.printToStdout())
@@ -94,6 +120,8 @@ ProcessOutcome outcome = handle.await();
 
 `Nexec.interactive(...).start()` launches the process under a pseudo-terminal so the child sees `isatty() == true`. Stdout and stderr are merged into a single PTY master stream. Use this for processes that depend on terminal behaviour — prompts, line-buffering, `ncurses` UIs.
 
+> **Requires pty4j** — see [Installation](#pty-support-optional).
+
 ```java
 PtyHandle shell = Nexec.interactive("python3")
         .ptySize(200, 50)
@@ -113,12 +141,23 @@ Every execution resolves to a `ProcessOutcome`, a sealed interface with four var
 
 | Variant | When |
 |---|---|
-| `Completed(exitCode, success, duration)` | Process exited naturally |
+| `Completed(exitCode, succeeded, duration)` | Process exited naturally |
 | `TimedOut(elapsed)` | Timeout expired; process was killed |
 | `Killed(elapsed)` | Caller called `cancel()`; process was killed |
 | `Failed(cause)` | Process never started, or an I/O error occurred |
 
-`Completed.succeeded()` returns `true` when the exit code is zero.
+`Completed.succeeded()` returns `true` when the exit code is in the configured set of success codes (default: `{0}`). Use `successExitCodes(int...)` on the builder to customise this.
+
+```java
+// Treat exit code 0 or 1 as success
+ProcessOutcome outcome = Nexec.run("diff", "a.txt", "b.txt")
+        .successExitCodes(0, 1)
+        .execute();
+
+if (outcome instanceof ProcessOutcome.Completed c && c.succeeded()) {
+    System.out.println("files differ or are identical — both are fine");
+}
+```
 
 ---
 
@@ -141,8 +180,11 @@ Every execution resolves to a `ProcessOutcome`, a sealed interface with four var
 | `env(key, value)` | Add an environment variable. |
 | `envMap(Map)` | Add multiple environment variables. |
 | `clearEnv()` | Clear the inherited environment before adding variables. |
+| `successExitCodes(int...)` | Exit codes treated as success. Default: `{0}`. |
 
 ### `PtyBuilder` — via `Nexec.interactive`
+
+> **Requires pty4j** — see [Installation](#pty-support-optional).
 
 | Method | Description |
 |---|---|
@@ -156,6 +198,7 @@ Every execution resolves to a `ProcessOutcome`, a sealed interface with four var
 | `workingDir(Path)` | Set the working directory. |
 | `env(key, value)` | Add an environment variable. |
 | `envMap(Map)` | Add multiple environment variables. |
+| `successExitCodes(int...)` | Exit codes treated as success. Default: `{0}`. |
 
 ---
 

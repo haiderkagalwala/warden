@@ -22,18 +22,15 @@ public sealed interface ProcessOutcome permits
         ProcessOutcome.Failed {
 
     /**
-     * Process ran to natural completion. Check {@link #succeeded()} to determine whether
-     * the exit code signals success.
+     * Process ran to natural completion.
+     * {@link #succeeded()} returns {@code true} when the exit code is in the set configured
+     * via {@code successExitCodes(int...)} on the builder (default: {@code {0}}).
      */
     record Completed(
             int exitCode,
-            boolean success,
+            boolean succeeded,
             Duration duration
-    ) implements ProcessOutcome {
-
-        /** Returns {@code true} if the process exited with a success exit code. */
-        public boolean succeeded() { return success; }
-    }
+    ) implements ProcessOutcome {}
 
     /** Process was killed because the configured timeout expired. */
     record TimedOut(

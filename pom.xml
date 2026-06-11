@@ -7,7 +7,7 @@
 
     <groupId>io.github.haiderkagalwala</groupId>
     <artifactId>nexec</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.1.0</version>
     <packaging>jar</packaging>
 
     <name>nexec</name>
@@ -18,16 +18,42 @@
     </description>
     <url>https://github.com/haiderkagalwala/nexec</url>
 
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>haiderkagalwala</id>
+            <name>Haider Kagalwala</name>
+            <email>haiderkagalwala@gmail.com</email>
+            <url>https://github.com/haiderkagalwala</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/haiderkagalwala/nexec.git</connection>
+        <developerConnection>scm:git:ssh://github.com/haiderkagalwala/nexec.git</developerConnection>
+        <url>https://github.com/haiderkagalwala/nexec</url>
+        <tag>v0.1.0</tag>
+    </scm>
+
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <dependencies>
+        <!-- PTY support — optional: only needed if you use Nexec.interactive() -->
         <dependency>
             <groupId>org.jetbrains.pty4j</groupId>
             <artifactId>pty4j</artifactId>
             <version>0.13.11</version>
+            <optional>true</optional>
         </dependency>
 
         <dependency>
@@ -51,7 +77,85 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
             </plugin>
+
+            <!-- Sources jar — required by Maven Central -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.3.0</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals><goal>jar-no-fork</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Javadoc jar — required by Maven Central -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.6.3</version>
+                <configuration>
+                    <release>21</release>
+                    <!--
+                        Suppress "no @param / @return / @throws" lint warnings.
+                        Fluent builder methods are self-documenting; boilerplate tags
+                        add noise. Structural errors (bad HTML, broken links) are
+                        still caught because only the 'missing' group is disabled.
+                    -->
+                    <additionalOptions>-Xdoclint:-missing</additionalOptions>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals><goal>jar</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
+
+    <!--
+        Release profile — activate with: mvn deploy -P release
+        Requires:
+          - GPG key configured locally (gpg ~~gen-key)
+          - ~/.m2/settings.xml with a <server id="central"> entry containing
+            your Sonatype Central portal token (username + password).
+    -->
+    <profiles>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <!-- GPG signing — all artifacts must be signed for Central -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals><goal>sign</goal></goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Sonatype Central Publishing (new portal, replaces OSSRH) -->
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.5.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>false</autoPublish>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

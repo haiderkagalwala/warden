@@ -40,17 +40,39 @@ public final class Nexec {
     /**
      * Creates a builder for a normal (non-PTY) process.
      * Call {@link CommandBuilder#execute()} to block until the process exits,
-     * or {@link CommandBuilder#executeAsync()} for a non-blocking {@link io.github.haiderkagalwala.nexec.handle.PipeHandle}.
+     * or {@link CommandBuilder#executeAsync()} for a non-blocking
+     * {@link io.github.haiderkagalwala.nexec.handle.PipeHandle}.
+     *
+     * @param command the program and its arguments; must not be null or empty
+     * @throws IllegalArgumentException if {@code command} is null or empty
      */
     public static CommandBuilder run(String... command) {
+        if (command == null || command.length == 0)
+            throw new IllegalArgumentException("command must not be empty");
         return new CommandBuilder(List.of(command));
     }
 
     /**
      * Creates a builder for a PTY (pseudo-terminal) process.
-     * Call {@link PtyBuilder#start()} to launch and receive a {@link io.github.haiderkagalwala.nexec.handle.PtyHandle}.
+     * Call {@link PtyBuilder#start()} to launch and receive a
+     * {@link io.github.haiderkagalwala.nexec.handle.PtyHandle}.
+     *
+     * <p><b>Requires pty4j on the classpath.</b> pty4j is declared as an optional
+     * dependency in nexec's POM; add it explicitly to your project if you use this method:
+     * <pre>{@code
+     * <dependency>
+     *     <groupId>org.jetbrains.pty4j</groupId>
+     *     <artifactId>pty4j</artifactId>
+     *     <version>0.13.11</version>
+     * </dependency>
+     * }</pre>
+     *
+     * @param command the program and its arguments; must not be null or empty
+     * @throws IllegalArgumentException if {@code command} is null or empty
      */
     public static PtyBuilder interactive(String... command) {
+        if (command == null || command.length == 0)
+            throw new IllegalArgumentException("command must not be empty");
         return new PtyBuilder(List.of(command));
     }
 }

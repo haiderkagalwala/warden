@@ -16,6 +16,9 @@ import java.util.Arrays;
  *   <li>{@code sleep <ms>}     — sleeps for the given number of milliseconds</li>
  *   <li>{@code cat}            — reads stdin to EOF and echoes to stdout</li>
  *   <li>{@code infinite}       — writes output lines forever (never exits)</li>
+ *   <li>{@code bigoutput}      — writes ~2 MB to stdout then exits 0</li>
+ *   <li>{@code ptyecho}        — prints READY, reads one PTY line, echoes it, exits 0</li>
+ *   <li>{@code env <name>}     — prints the value of the named env var to stdout</li>
  * </ul>
  */
 public class TestProcessHelper {
@@ -59,6 +62,7 @@ public class TestProcessHelper {
                     System.out.flush();
                 }
             }
+
             case "bigoutput" -> {
                 // 2MB — well past the 64KB pipe wall
                 byte[] data = new byte[2 * 1024 * 1024];
@@ -79,6 +83,7 @@ public class TestProcessHelper {
                     System.out.flush();
                 }
             }
+
             case "env" -> {
                 String val = System.getenv(args[1]);
                 System.out.println(val != null ? val : "NOT_SET");

@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p>Write to the child process via {@link #writeLine}, {@link #write(String)}, or
  * {@link #write(byte[])} — all flush immediately.
  *
- * <h3>Stream ownership</h3>
+ * <h2>Stream ownership</h2>
  * <p>{@link #stdout()} and {@link #stderr()} are safe to read directly only if no
  * {@code onStdout} / {@code onStderr} consumer was configured on the builder. A configured
  * consumer runs a background drainer on the same stream; competing reads produce corrupt,
@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p>{@link #stdin()} is always safe to write to. Flush after each write; close to signal
  * EOF to the child process.
  *
- * <h3>Outcome</h3>
+ * <h2>Outcome</h2>
  * <p>The future from {@link #outcome()} completes after the process exits and all background
  * drain tasks have finished.
  */

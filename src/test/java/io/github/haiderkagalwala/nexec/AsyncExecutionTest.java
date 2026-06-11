@@ -150,8 +150,6 @@ class AsyncExecutionTest {
                 "Async process deadlocked");
     }
 
-
-
     @Test
     void pty_write_processReceivesInput() throws Exception {
         // "ptyecho" prints "READY" once it is listening on stdin, then reads one line

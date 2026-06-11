@@ -18,7 +18,6 @@ class ProcessOutcomeTest {
         var c = new ProcessOutcome.Completed(0, true, Duration.ofMillis(10));
         assertEquals(0, c.exitCode());
         assertTrue(c.succeeded());
-        assertTrue(c.success());
     }
 
     @Test

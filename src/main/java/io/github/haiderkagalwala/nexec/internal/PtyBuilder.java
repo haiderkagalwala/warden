@@ -17,6 +17,10 @@ import java.util.Map;
  * <p>Obtain an instance via {@link Nexec#interactive(String...)}. Call {@link #start()}
  * to launch the process and receive a {@link PtyHandle} immediately.
  *
+ * <p><b>Requires pty4j on the classpath.</b> pty4j is an optional dependency in nexec —
+ * add it explicitly if you use PTY features. See {@link Nexec#interactive(String...)} for
+ * the Maven coordinates.
+ *
  * <pre>{@code
  * PtyHandle shell = Nexec.interactive("bash")
  *         .ptySize(220, 50)
