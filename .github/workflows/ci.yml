@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build & Test (Java ${{ matrix.java }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false   # run all matrix jobs even if one fails
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        java: [ 21 ]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: temurin
+          cache: maven          # caches ~/.m2 between runs — speeds up subsequent builds
+
+      - name: Build and test
+        run: mvn verify --no-transfer-progress
